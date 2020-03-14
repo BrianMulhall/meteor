@@ -1,4 +1,4 @@
-import { CssTools } from './minifier';
+import { CssTools } from '../minifier';
 
 Tinytest.add(
   'minifier-css - CSS can be parsed properly into an AST',

@@ -1,4 +1,4 @@
-import { CssTools } from './minifier';
+import { CssTools } from '../minifier';
 
 Tinytest.add('minifier-css - url rewriting when merging', (test) => {
   const stylesheet = backgroundPath => (
