@@ -64,20 +64,15 @@ const CssTools = {
    * @return {String[]} Array containing the minified CSS.
    */
   minifyCss(cssText) {
-    let result;
+    // create a PostCSS processor that has cssnano configured to do the  
+    // minifcation of the CSS input string
     const processor = postcss().use(cssnano({ safe: true }));
-    try {
-      result = Promise.await(processor.process(cssText, { from: void 0, }));
-    }
-    catch (err) {
-      if (err.name === "CssSyntaxError") {
-        console.log("CSSSynatxError During CSS File Minification");
-      }
-      else {
-        console.log("Unknown Error During CSS File Minification");
-      }
-    }    
-
+    
+    // when there is a syntax error in the CSS the error is allowed to bubble up
+    // to the caller, this is consistent with the behavior we had previosly using 
+    // Futures
+    const result = Promise.await(processor.process(cssText, { from: void 0, }));
+        
     // Since this function has always returned an array, we'll wrap the
     // minified css string in an array before returning, even though we're
     // only ever returning one minified css string in that array (maintaining
