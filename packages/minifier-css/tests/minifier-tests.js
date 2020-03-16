@@ -18,6 +18,14 @@ Tinytest.add(
 );
 
 Tinytest.add(
+  'minifier-css - Error handling tests',
+  (test) => {
+    test.throws(() => CssTools.minifyCss('body  color: "red"}'));
+    test.throws(() => CssTools.minifyCss('body { color: "red"' ));
+  }
+);
+
+Tinytest.add(
   'minifier-css - CSS AST can be converted back into a string',
   (test) => {
     const originalCss = 'body { color: "red"}';
