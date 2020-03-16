@@ -1,6 +1,5 @@
 import path from 'path';
 import url from 'url';
-import Future from 'fibers/future';
 import postcss from 'postcss';
 import cssnano from 'cssnano';
 
@@ -65,23 +64,25 @@ const CssTools = {
    * @return {String[]} Array containing the minified CSS.
    */
   minifyCss(cssText) {
-    const f = new Future;
-    postcss([
-      cssnano({ safe: true }),
-    ]).process(cssText, {
-      from: void 0,
-    }).then(result => {
-      f.return(result.css);
-    }).catch(error => {
-      f.throw(error);
-    });
-    const minifiedCss = f.wait();
+    let result;
+    const processor = postcss().use(cssnano({ safe: true }));
+    try {
+      result = Promise.await(processor.process(cssText, { from: void 0, }));
+    }
+    catch (err) {
+      if (err.name === "CssSyntaxError") {
+        console.log("CSSSynatxError During CSS File Minification");
+      }
+      else {
+        console.log("Unknown Error During CSS File Minification");
+      }
+    }    
 
     // Since this function has always returned an array, we'll wrap the
     // minified css string in an array before returning, even though we're
     // only ever returning one minified css string in that array (maintaining
     // backwards compatibility).
-    return [minifiedCss];
+    return [result.css];
   },
 
   /**
