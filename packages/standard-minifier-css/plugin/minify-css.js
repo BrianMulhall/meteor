@@ -5,47 +5,50 @@ var LRU = Npm.require("lru-cache");
 Plugin.registerMinifier({
   extensions: ["css"],
   archMatching: "web"
-}, function () {
-  var minifier = new CssToolsMinifier();
-  return minifier;
-});
+  }, 
+  () => new CssToolsMinifier()
+);
 
-function CssToolsMinifier () {};
-
-CssToolsMinifier.prototype.processFilesForBundle = function (files, options) {
-  var mode = options.minifyMode;
-
-  if (! files.length) return;
-
-  var merged = mergeCss(files);
-
-  if (mode === 'development') {
-    files[0].addStylesheet({
-      data: merged.code,
-      sourceMap: merged.sourceMap,
-      path: 'merged-stylesheets.css'
-    });
-    return;
-  }
-
-  var minifiedFiles = CssTools.minifyCss(merged.code);
-
-  if (files.length) {
-    minifiedFiles.forEach(function (minified) {
-      files[0].addStylesheet({
-        data: minified
-      });
-    });
-  }
-};
-
-var mergeCache = new LRU({
+const mergeCache = new LRU({
   max: 100
 });
 
-var hashFiles = Profile("hashFiles", function (files) {
-  var hash = createHash("sha1");
-  var hashes = files.forEach(f => {
+class CssToolsMinifier {
+
+  processFilesForBundle(files, options) {
+    const mode = options.minifyMode;
+
+    if (!files.length) return;
+
+    const merged = mergeCss(files);
+
+    if (mode === 'development') {
+      files[0].addStylesheet({
+        data: merged.code,
+        sourceMap: merged.sourceMap,
+        path: 'merged-stylesheets.css'
+      });
+      return;
+    }
+
+    // this is an array for backwards compatability reasons only
+    // only one file will ever be returned
+    const minifiedFiles = CssTools.minifyCss(merged.code);
+
+    if (files.length) {
+      minifiedFiles.forEach(function (minified) {
+        files[0].addStylesheet({
+          data: minified
+        });
+      });
+    }
+  }
+}
+
+
+const hashFiles = Profile("hashFiles", function (files) {
+  const hash = createHash("sha1");
+  files.forEach(f => {
     hash.update(f.getSourceHash()).update("\0");
   });
   return hash.digest("hex");
@@ -56,57 +59,54 @@ function disableSourceMappingURLs(css) {
                      "# sourceMappingURL_DISABLED=");
 }
 
-// Lints CSS files and merges them into one file, fixing up source maps and
-// pulling any @import directives up to the top since the CSS spec does not
-// allow them to appear in the middle of a file.
-var mergeCss = Profile("mergeCss", function (css) {
-  var hashOfFiles = hashFiles(css);
-  var merged = mergeCache.get(hashOfFiles);
+// Merge CSS files into one file, fixing up source maps and
+// pulling any @import directives up to the top since the 
+// CSS spec does not allow @import's to appear in the middle 
+// of a file.
+const mergeCss = Profile("mergeCss", function (css) {
+  const hashOfFiles = hashFiles(css);
+  let merged = mergeCache.get(hashOfFiles);
   if (merged) {
     return merged;
   }
 
   // Filenames passed to AST manipulator mapped to their original files
-  var originals = {};
+  const originals = {};
 
-  var cssAsts = css.map(function (file) {
-    var filename = file.getPathInBundle();
+  const cssAsts = css.map(function (file) {
+    const filename = file.getPathInBundle();
     originals[filename] = file;
     try {
-      var parseOptions = { source: filename, position: true };
-      var css = disableSourceMappingURLs(file.getContentsAsString());
-      var ast = CssTools.parseCss(css, parseOptions);
+      const parseOptions = { source: filename, position: true };
+      const css = disableSourceMappingURLs(file.getContentsAsString());
+      const ast = CssTools.parseCss(css, parseOptions);
       ast.filename = filename;
-    } catch (e) {
-      if (e.reason) {
-        file.error({
-          message: e.reason,
-          line: e.line,
-          column: e.column
-        });
+    } catch (err) {
+      if (err.reason) {
+        file.error({ message: e.reason, line: e.line, column: e.column });
       } else {
         // Just in case it's not the normal error the library makes.
-        file.error({message: e.message});
+        file.error({message: err.message});
       }
-
-      return { type: "stylesheet", stylesheet: { rules: [] },
+      return {
+        type: "stylesheet",
+        stylesheet: { rules: [] },
         filename: filename };
     }
-
     return ast;
   });
 
-  var warnCb = function (filename, msg) {
+  const warnCb = function (filename, msg) {
     // XXX make this a buildmessage.warning call rather than a random log.
     //     this API would be like buildmessage.error, but wouldn't cause
     //     the build to fail.
     console.log(filename + ': warn: ' + msg);
   };
 
-  var mergedCssAst = CssTools.mergeCssAsts(cssAsts, warnCb);
+  const mergedCssAst = CssTools.mergeCssAsts(cssAsts, warnCb);
 
   // Overwrite the CSS files list with the new concatenated file
-  var stringifiedCss = CssTools.stringifyCss(mergedCssAst, {
+  const stringifiedCss = CssTools.stringifyCss(mergedCssAst, {
     sourcemap: true,
     // don't try to read the referenced sourcemaps from the input
     inputSourcemaps: false
@@ -126,16 +126,16 @@ var mergeCss = Profile("mergeCss", function (css) {
 
   // Compose the concatenated file's source map with source maps from the
   // previous build step if necessary.
-  var newMap = Profile.time("composing source maps", function () {
-    var newMap = new sourcemap.SourceMapGenerator();
-    var concatConsumer = new sourcemap.SourceMapConsumer(stringifiedCss.map);
+  const newMap = Profile.time("composing source maps", function () {
+    const newMap = new sourcemap.SourceMapGenerator();
+    const concatConsumer = new sourcemap.SourceMapConsumer(stringifiedCss.map);
 
     // Create a dictionary of source map consumers for fast access
-    var consumers = Object.create(null);
+    const consumers = Object.create(null);
 
     Object.keys(originals).forEach(function (name) {
-      var file = originals[name];
-      var sourceMap = file.getSourceMap();
+      const file = originals[name];
+      const sourceMap = file.getSourceMap();
 
       if (sourceMap) {
         try {
@@ -152,14 +152,14 @@ var mergeCss = Profile("mergeCss", function (css) {
 
     // Maps each original source file name to the SourceMapConsumer that
     // can provide its content.
-    var sourceToConsumerMap = Object.create(null);
+    const sourceToConsumerMap = Object.create(null);
 
     // Find mappings from the concatenated file back to the original files
     concatConsumer.eachMapping(function (mapping) {
-      var source = mapping.source;
-      var consumer = consumers[source];
+      let source = mapping.source;
+      const consumer = consumers[source];
 
-      var original = {
+      let original = {
         line: mapping.originalLine,
         column: mapping.originalColumn
       };
@@ -169,7 +169,7 @@ var mergeCss = Profile("mergeCss", function (css) {
       // original file. Otherwise, use the mapping of the concatenated file's
       // source map.
       if (consumer) {
-        var newOriginal = consumer.originalPositionFor(original);
+        const newOriginal = consumer.originalPositionFor(original);
 
         // Finding the original position should always be possible (otherwise,
         // one of the source maps would have incorrect mappings). However, in
@@ -209,8 +209,8 @@ var mergeCss = Profile("mergeCss", function (css) {
     // call them only once per source, rather than calling them every time
     // we call newMap.addMapping in the loop above.
     Object.keys(sourceToConsumerMap).forEach(function (source) {
-      var consumer = sourceToConsumerMap[source];
-      var content = consumer.sourceContentFor(source);
+      const consumer = sourceToConsumerMap[source];
+      const content = consumer.sourceContentFor(source);
       newMap.setSourceContent(source, content);
     });
 
