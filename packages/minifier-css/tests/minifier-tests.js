@@ -21,7 +21,6 @@ Tinytest.add(
   'minifier-css - Error handling tests',
   (test) => {
     test.throws(() => CssTools.minifyCss('body  color: "red"}'));
-    test.throws(() => CssTools.minifyCss('body { color: "red"' ));
   }
 );
 

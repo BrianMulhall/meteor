@@ -1,10 +1,10 @@
-var sourcemap = Npm.require("source-map");
-var createHash = Npm.require("crypto").createHash;
-var LRU = Npm.require("lru-cache");
+const sourcemap = Npm.require("source-map");
+const createHash = Npm.require("crypto").createHash;
+const LRU = Npm.require("lru-cache");
 
 Plugin.registerMinifier({
-  extensions: ["css"],
-  archMatching: "web"
+    extensions: ["css"],
+    archMatching: "web"
   }, 
   () => new CssToolsMinifier()
 );
@@ -31,7 +31,7 @@ class CssToolsMinifier {
       return;
     }
 
-    // this is an array for backwards compatability reasons only
+    // this is an array for backwards compatability reasons
     // only one file will ever be returned
     const minifiedFiles = CssTools.minifyCss(merged.code);
 

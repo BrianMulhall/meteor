@@ -3,12 +3,12 @@
 ***
 
 Standard Minifier for CSS
-=========================
+===
 
 This package provides a minifier plugin used for Meteor apps by default.
 
 The CSS minifier mostly reduces the amount of white-space while parsing CSS files 
-using PostCSS along with the CSSNano plugin.
+using PostCSS and the CSSNano plugin.
 
 The behavior of this plugin in development and production modes are depicted below
 in the table.
