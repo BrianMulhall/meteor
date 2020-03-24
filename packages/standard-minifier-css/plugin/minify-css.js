@@ -83,7 +83,7 @@ const mergeCss = Profile("mergeCss", function (css) {
       ast.filename = filename;
     } catch (err) {
       if (err.reason) {
-        file.error({ message: e.reason, line: e.line, column: e.column });
+        file.error({ message: err.reason, line: err.line, column: err.column });
       } else {
         // Just in case it's not the normal error the library makes.
         file.error({message: err.message});
