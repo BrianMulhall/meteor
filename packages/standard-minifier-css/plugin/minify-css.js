@@ -76,22 +76,33 @@ const mergeCss = Profile("mergeCss", function (css) {
   const cssAsts = css.map(function (file) {
     const filename = file.getPathInBundle();
     originals[filename] = file;
+    let ast;
     try {
       const parseOptions = { source: filename, position: true };
       const css = disableSourceMappingURLs(file.getContentsAsString());
-      const ast = CssTools.parseCss(css, parseOptions);
+      ast = CssTools.parseCss(css, parseOptions);
       ast.filename = filename;
-    } catch (err) {
+    }
+    catch (err) {
       if (err.reason) {
-        file.error({ message: err.reason, line: err.line, column: err.column });
-      } else {
-        // Just in case it's not the normal error the library makes.
-        file.error({message: err.message});
+        file.error({
+          message: err.reason,
+          line:    err.line,
+          column:  err.column
+        });
       }
+      else {
+        // Just in case it's not the normal error the library makes.
+        file.error({
+          message: err.message
+        });
+      }
+
       return {
         type: "stylesheet",
         stylesheet: { rules: [] },
-        filename: filename };
+        filename: filename
+      };
     }
     return ast;
   });
