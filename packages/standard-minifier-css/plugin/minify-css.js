@@ -55,16 +55,15 @@ const hashFiles = Profile("hashFiles", function (files) {
 });
 
 function disableSourceMappingURLs(css) {
-  return css.replace(/# sourceMappingURL=/g,
-                     "# sourceMappingURL_DISABLED=");
+  return css.replace(/# sourceMappingURL=/g,"# sourceMappingURL_DISABLED=");
 }
 
 // Merge CSS files into one file, fixing up source maps and
 // pulling any @import directives up to the top since the 
 // CSS spec does not allow @import's to appear in the middle 
 // of a file.
-const mergeCss = Profile("mergeCss", function (css) {
-  const hashOfFiles = hashFiles(css);
+const mergeCss = Profile("mergeCss", function (files) {
+  const hashOfFiles = hashFiles(files);
   let merged = mergeCache.get(hashOfFiles);
   if (merged) {
     return merged;
@@ -73,7 +72,7 @@ const mergeCss = Profile("mergeCss", function (css) {
   // Filenames passed to AST manipulator mapped to their original files
   const originals = {};
 
-  const cssAsts = css.map(function (file) {
+  const cssAsts = files.map(function (file) {
     const filename = file.getPathInBundle();
     originals[filename] = file;
     let ast;

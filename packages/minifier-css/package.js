@@ -18,7 +18,7 @@ Package.onTest(function (api) {
   api.use('ecmascript');
   api.use('tinytest');
   api.addFiles([
-    'tests/minifier-tests.js',
-    'tests/urlrewriting-tests.js'
+    'minifier-tests.js',
+    'urlrewriting-tests.js'
   ], 'server');
 });
