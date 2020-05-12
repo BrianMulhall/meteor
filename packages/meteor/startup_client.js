@@ -1,29 +1,30 @@
-var callbackQueue = [];
-var isLoadingCompleted = false;
-var isReady = false;
+let callbackQueue = [];
+let isLoadingCompleted = false;
+let isReady = false;
 
 // Keeps track of how many events to wait for in addition to loading completing,
 // before we're considered ready.
-var readyHoldsCount = 0;
+let readyHoldsCount = 0;
 
-var holdReady =  function () {
+const holdReady =  function () {
   readyHoldsCount++;
 }
 
-var releaseReadyHold = function () {
+const releaseReadyHold = function () {
   readyHoldsCount--;
   maybeReady();
 }
 
-var maybeReady = function () {
-  if (isReady || !isLoadingCompleted || readyHoldsCount > 0)
+const maybeReady = function () {
+  if (isReady || !isLoadingCompleted || readyHoldsCount > 0) {
     return;
-
+  }
   isReady = true;
 
   // Run startup callbacks
-  while (callbackQueue.length)
+  while (callbackQueue.length) {
     (callbackQueue.shift())();
+  }
 
   if (Meteor.isCordova) {
     // Notify the WebAppLocalServer plugin that startup was completed successfully,
@@ -32,7 +33,7 @@ var maybeReady = function () {
   }
 };
 
-var loadingCompleted = function () {
+const loadingCompleted = function () {
   if (!isLoadingCompleted) {
     isLoadingCompleted = true;
     maybeReady();
@@ -48,11 +49,13 @@ if (document.readyState === 'complete' || document.readyState === 'loaded') {
   // Loading has completed,
   // but allow other scripts the opportunity to hold ready
   window.setTimeout(loadingCompleted);
-} else { // Attach event listeners to wait for loading to complete
+}
+else { // Attach event listeners to wait for loading to complete
   if (document.addEventListener) {
     document.addEventListener('DOMContentLoaded', loadingCompleted, false);
     window.addEventListener('load', loadingCompleted, false);
-  } else { // Use IE event model for < IE9
+  }
+  else { // Use IE event model for < IE9
     document.attachEvent('onreadystatechange', function () {
       if (document.readyState === "complete") {
         loadingCompleted();
@@ -69,16 +72,21 @@ if (document.readyState === 'complete' || document.readyState === 'loaded') {
  */
 Meteor.startup = function (callback) {
   // Fix for < IE9, see http://javascript.nwbox.com/IEContentLoaded/
-  var doScroll = !document.addEventListener &&
-    document.documentElement.doScroll;
+  const doScroll = !document.addEventListener && document.documentElement.doScroll;
 
   if (!doScroll || window !== top) {
-    if (isReady)
+    if (isReady) {
       callback();
-    else
+    }
+    else {
       callbackQueue.push(callback);
-  } else {
-    try { doScroll('left'); }
+    }
+  }
+  else {
+    
+    try {
+      doScroll('left');
+    }
     catch (error) {
       setTimeout(function () { Meteor.startup(callback); }, 50);
       return;

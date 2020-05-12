@@ -1,4 +1,4 @@
-var config = __meteor_runtime_config__;
+const config = __meteor_runtime_config__;
 meteorEnv = config.meteorEnv;
 
 /**

@@ -59,23 +59,23 @@ Package.onUse(function (api) {
 Package.onTest(function (api) {
   api.use(['underscore', 'tinytest', 'test-helpers']);
 
-  api.addFiles('browser_environment_test.js', 'web.browser');
-  api.addFiles('client_environment_test.js', 'client');
-  api.addFiles('cordova_environment_test.js', 'web.cordova');
-  api.addFiles('server_environment_test.js', 'server');
+  api.addFiles('tests/browser_environment_test.js', 'web.browser');
+  api.addFiles('tests/client_environment_test.js', 'client');
+  api.addFiles('tests/cordova_environment_test.js', 'web.cordova');
+  api.addFiles('tests/server_environment_test.js', 'server');
 
-  api.addFiles('helpers_test.js', ['client', 'server']);
-  api.addFiles('dynamics_test.js', ['client', 'server']);
+  api.addFiles('tests/helpers_test.js', ['client', 'server']);
+  api.addFiles('tests/dynamics_test.js', ['client', 'server']);
 
-  api.addFiles('fiber_helpers_test.js', ['server']);
-  api.addFiles('wrapasync_test.js', ['server']);
+  api.addFiles('tests/fiber_helpers_test.js', ['server']);
+  api.addFiles('tests/wrapasync_test.js', ['server']);
 
-  api.addFiles('url_tests.js', ['client', 'server']);
+  api.addFiles('tests/url_tests.js', ['client', 'server']);
 
-  api.addFiles('timers_tests.js', ['client', 'server']);
+  api.addFiles('tests/timers_tests.js', ['client', 'server']);
 
-  api.addFiles('debug_test.js', 'client');
+  api.addFiles('tests/debug_test.js', 'client');
 
-  api.addFiles('bare_test_setup.js', 'client', {bare: true});
-  api.addFiles('bare_tests.js', 'client');
+  api.addFiles('tests/bare_test_setup.js', 'client', {bare: true});
+  api.addFiles('tests/bare_tests.js', 'client');
 });

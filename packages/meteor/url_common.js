@@ -16,12 +16,14 @@ Meteor.absoluteUrl = function (path, options) {
   // merge options with defaults
   options = Object.assign({}, Meteor.absoluteUrl.defaultOptions, options || {});
 
-  var url = options.rootUrl;
-  if (!url)
+  let url = options.rootUrl;
+  if (!url) {
     throw new Error("Must pass options.rootUrl or set ROOT_URL in the server environment");
+  }
 
-  if (!/^http[s]?:\/\//i.test(url)) // url starts with 'http://' or 'https://'
+  if (!/^http[s]?:\/\//i.test(url)) { // url starts with 'http://' or 'https://'
     url = 'http://' + url; // we will later fix to https if options.secure is set
+  }
 
   if (! url.endsWith("/")) {
     url += "/";
@@ -50,10 +52,10 @@ Meteor.absoluteUrl = function (path, options) {
 };
 
 // allow later packages to override default options
-var defaultOptions = Meteor.absoluteUrl.defaultOptions = {};
+const defaultOptions = Meteor.absoluteUrl.defaultOptions = {};
 
 // available only in a browser environment
-var location = typeof window === "object" && window.location;
+const location = typeof window === "object" && window.location;
 
 if (typeof __meteor_runtime_config__ === "object" &&
     __meteor_runtime_config__.ROOT_URL) {

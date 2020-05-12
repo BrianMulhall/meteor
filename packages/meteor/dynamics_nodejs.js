@@ -16,9 +16,7 @@ Meteor.EnvironmentVariable = function () {
   this.slot = nextSlot++;
 };
 
-var EVp = Meteor.EnvironmentVariable.prototype;
-
-EVp.get = function () {
+Meteor.EnvironmentVariable.prototype.get = function () {
   Meteor._nodeCodeMustBeInFiber();
 
   return Fiber.current._meteor_dynamics &&
@@ -38,13 +36,13 @@ EVp.get = function () {
 // correct argumentChecker. So this function is just like get(), but it
 // returns null rather than throwing when called from outside a Fiber. (On the
 // client, it is identical to get().)
-EVp.getOrNullIfOutsideFiber = function () {
+Meteor.EnvironmentVariable.prototype.getOrNullIfOutsideFiber = function () {
   if (!Fiber.current)
     return null;
   return this.get();
 };
 
-EVp.withValue = function (value, func) {
+Meteor.EnvironmentVariable.prototype.withValue = function (value, func) {
   Meteor._nodeCodeMustBeInFiber();
 
   if (!Fiber.current._meteor_dynamics)

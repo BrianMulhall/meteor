@@ -1,4 +1,4 @@
-var suppress = 0;
+let suppress = 0;
 
 // replacement for console.log. This is a temporary API. We should
 // provide a real logging API soon (possibly just a polyfill for
@@ -16,12 +16,13 @@ Meteor._debug = function (/* arguments */) {
     suppress--;
     return;
   }
-  if (typeof console !== 'undefined' &&
-      typeof console.log !== 'undefined') {
+  if (typeof console !== 'undefined' && typeof console.log !== 'undefined') {
+    
     if (arguments.length == 0) { // IE Companion breaks otherwise
       // IE10 PP4 requires at least one argument
       console.log('');
-    } else {
+    }
+    else {
       // IE doesn't have console.log.apply, it's not a real Object.
       // http://stackoverflow.com/questions/5538972/console-log-apply-not-working-in-ie9
       // http://patik.com/blog/complete-cross-browser-console-log/
@@ -32,21 +33,25 @@ Meteor._debug = function (/* arguments */) {
         // console.log, so try to call it with one argument if possible.
         // Approach taken here: If all arguments are strings, join them on space.
         // See https://github.com/meteor/meteor/pull/732#issuecomment-13975991
-        var allArgumentsOfTypeString = true;
-        for (var i = 0; i < arguments.length; i++)
+        let allArgumentsOfTypeString = true;
+        for (let i = 0; i < arguments.length; i++)
           if (typeof arguments[i] !== "string")
             allArgumentsOfTypeString = false;
 
-        if (allArgumentsOfTypeString)
+        if (allArgumentsOfTypeString) {
           console.log.apply(console, [Array.prototype.join.call(arguments, " ")]);
-        else
+        }
+        else {
           console.log.apply(console, arguments);
+        }
 
-      } else if (typeof Function.prototype.bind === "function") {
+      }
+      else if (typeof Function.prototype.bind === "function") {
         // IE9
-        var log = Function.prototype.bind.call(console.log, console);
+        const log = Function.prototype.bind.call(console.log, console);
         log.apply(console, arguments);
-      } else {
+      }
+      else {
         // IE8
         Function.prototype.call.call(console.log, console, Array.prototype.slice.call(arguments));
       }

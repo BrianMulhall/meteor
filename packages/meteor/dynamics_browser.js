@@ -1,27 +1,27 @@
 // Simple implementation of dynamic scoping, for use in browsers
 
-var nextSlot = 0;
-var currentValues = [];
+let nextSlot = 0;
+let currentValues = [];
 
 Meteor.EnvironmentVariable = function () {
   this.slot = nextSlot++;
 };
 
-var EVp = Meteor.EnvironmentVariable.prototype;
 
-EVp.get = function () {
+Meteor.EnvironmentVariable.prototype.get = function () {
   return currentValues[this.slot];
 };
 
-EVp.getOrNullIfOutsideFiber = function () {
+Meteor.EnvironmentVariable.prototype.getOrNullIfOutsideFiber = function () {
   return this.get();
 };
 
-EVp.withValue = function (value, func) {
-  var saved = currentValues[this.slot];
+Meteor.EnvironmentVariable.prototype.withValue = function (value, func) {
+  const saved = currentValues[this.slot];
+  let ret;
   try {
     currentValues[this.slot] = value;
-    var ret = func();
+    ret = func();
   } finally {
     currentValues[this.slot] = saved;
   }
