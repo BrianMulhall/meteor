@@ -11,8 +11,7 @@ WebAppHashing = {};
 // (but the second is a performance enhancement, not a hard
 // requirement).
 
-WebAppHashing.calculateClientHash =
-  function (manifest, includeFilter, runtimeConfigOverride) {
+WebAppHashing.calculateClientHash = function (manifest, includeFilter, runtimeConfigOverride) {
   var hash = crypto.createHash('sha1');
 
   // Omit the old hashed client values in the new hash. These may be

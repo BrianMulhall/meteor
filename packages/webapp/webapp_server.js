@@ -21,8 +21,8 @@ import {
   registerSocketFileCleanup,
 } from './socket_file.js';
 
-var SHORT_SOCKET_TIMEOUT = 5*1000;
-var LONG_SOCKET_TIMEOUT = 120*1000;
+const SHORT_SOCKET_TIMEOUT = 5*1000;
+const LONG_SOCKET_TIMEOUT = 120*1000;
 
 export const WebApp = {};
 export const WebAppInternals = {};
@@ -258,9 +258,7 @@ Meteor.startup(function () {
       // If this is the first time we have calculated this hash,
       // program[key] will be a thunk (lazy function with no parameters)
       // that we should call to do the actual computation.
-      return typeof value === "function"
-        ? program[key] = value()
-        : value;
+      return typeof value === "function" ? program[key] = value() : value;
     };
   }
 
@@ -282,7 +280,7 @@ WebApp._timeoutAdjustmentRequestCallback = function (req, res) {
   req.setTimeout(LONG_SOCKET_TIMEOUT);
   // Insert our new finish listener to run BEFORE the existing one which removes
   // the response from the socket.
-  var finishListeners = res.listeners('finish');
+  let finishListeners = res.listeners('finish');
   // XXX Apparently in Node 0.12 this event was called 'prefinish'.
   // https://github.com/joyent/node/commit/7c9b6070
   // But it has switched back to 'finish' in Node v4:
@@ -300,7 +298,7 @@ WebApp._timeoutAdjustmentRequestCallback = function (req, res) {
 // Boilerplate object has:
 //   - func: XXX
 //   - baseData: XXX
-var boilerplateByArch = {};
+const boilerplateByArch = {};
 
 // Register a callback function that can selectively modify boilerplate
 // data given arguments (request, data, arch). The key should be a unique
@@ -315,7 +313,8 @@ WebAppInternals.registerBoilerplateDataCallback = function (key, callback) {
 
   if (typeof callback === "function") {
     boilerplateDataCallbacks[key] = callback;
-  } else {
+  }
+  else {
     assert.strictEqual(callback, null);
     delete boilerplateDataCallbacks[key];
   }
@@ -365,10 +364,7 @@ function getBoilerplateAsync(request, arch) {
   }));
 }
 
-WebAppInternals.generateBoilerplateInstance = function (arch,
-                                                        manifest,
-                                                        additionalOptions) {
-  additionalOptions = additionalOptions || {};
+WebAppInternals.generateBoilerplateInstance = function (arch, manifest, additionalOptions = {}) {
 
   const meteorRuntimeConfig = JSON.stringify(
     encodeURIComponent(JSON.stringify({
@@ -420,17 +416,12 @@ WebAppInternals.generateBoilerplateInstance = function (arch,
 
 // Serve static files from the manifest or added with
 // `addStaticJs`. Exported for tests.
-WebAppInternals.staticFilesMiddleware = async function (
-  staticFilesByArch,
-  req,
-  res,
-  next,
-) {
+WebAppInternals.staticFilesMiddleware = async function ( staticFilesByArch, req, res, next ) {
   if ('GET' != req.method && 'HEAD' != req.method && 'OPTIONS' != req.method) {
     next();
     return;
   }
-  var pathname = parseRequest(req).pathname;
+  let pathname = parseRequest(req).pathname;
   try {
     pathname = decodeURIComponent(pathname);
   } catch (e) {
@@ -438,7 +429,7 @@ WebAppInternals.staticFilesMiddleware = async function (
     return;
   }
 
-  var serveStaticJs = function (s) {
+  const serveStaticJs = function (s) {
     res.writeHead(200, {
       'Content-type': 'application/javascript; charset=UTF-8'
     });
@@ -446,8 +437,7 @@ WebAppInternals.staticFilesMiddleware = async function (
     res.end();
   };
 
-  if (_.has(additionalStaticJs, pathname) &&
-              ! WebAppInternals.inlineScriptsAllowed()) {
+  if (_.has(additionalStaticJs, pathname) && !WebAppInternals.inlineScriptsAllowed()) {
     serveStaticJs(additionalStaticJs[pathname]);
     return;
   }
@@ -484,9 +474,7 @@ WebAppInternals.staticFilesMiddleware = async function (
   // Cacheable files are files that should never change. Typically
   // named by their hash (eg meteor bundled js and css files).
   // We cache them ~forever (1yr).
-  const maxAge = info.cacheable
-    ? 1000 * 60 * 60 * 24 * 365
-    : 0;
+  const maxAge = info.cacheable ? 1000 * 60 * 60 * 24 * 365 : 0;
 
   if (info.cacheable) {
     // Since we use req.headers["user-agent"] to determine whether the
@@ -503,17 +491,16 @@ WebAppInternals.staticFilesMiddleware = async function (
   // You may also need to enable source maps in Chrome: open dev tools, click
   // the gear in the bottom right corner, and select "enable source maps".
   if (info.sourceMapUrl) {
-    res.setHeader('X-SourceMap',
-                  __meteor_runtime_config__.ROOT_URL_PATH_PREFIX +
-                  info.sourceMapUrl);
+    res.setHeader('X-SourceMap', __meteor_runtime_config__.ROOT_URL_PATH_PREFIX + info.sourceMapUrl);
   }
 
-  if (info.type === "js" ||
-      info.type === "dynamic js") {
+  if (info.type === "js" || info.type === "dynamic js") {
     res.setHeader("Content-Type", "application/javascript; charset=UTF-8");
-  } else if (info.type === "css") {
+  }
+  else if (info.type === "css") {
     res.setHeader("Content-Type", "text/css; charset=UTF-8");
-  } else if (info.type === "json") {
+  }
+  else if (info.type === "json") {
     res.setHeader("Content-Type", "application/json; charset=UTF-8");
   }
 
@@ -524,7 +511,8 @@ WebAppInternals.staticFilesMiddleware = async function (
   if (info.content) {
     res.write(info.content);
     res.end();
-  } else {
+  }
+  else {
     send(req, info.absolutePath, {
       maxage: maxAge,
       dotfiles: 'allow', // if we specified a dotfile in the manifest, serve it
@@ -610,10 +598,10 @@ onMessage("webapp-reload-client", async ({ arch }) => {
 });
 
 function runWebAppServer() {
-  var shuttingDown = false;
-  var syncQueue = new Meteor._SynchronousQueue();
+  let shuttingDown = false;
+  const syncQueue = new Meteor._SynchronousQueue();
 
-  var getItemPathname = function (itemUrl) {
+  const getItemPathname = function (itemUrl) {
     return decodeURIComponent(parseUrl(itemUrl).pathname);
   };
 
@@ -662,14 +650,8 @@ function runWebAppServer() {
     syncQueue.runTask(() => generateClientProgram(arch));
   };
 
-  function generateClientProgram(
-    arch,
-    staticFilesByArch = WebAppInternals.staticFilesByArch,
-  ) {
-    const clientDir = pathJoin(
-      pathDirname(__meteor_bootstrap__.serverDir),
-      arch,
-    );
+  function generateClientProgram( arch, staticFilesByArch = WebAppInternals.staticFilesByArch) {
+    const clientDir = pathJoin(pathDirname(__meteor_bootstrap__.serverDir), arch);
 
     // read the control for the client we'll be serving up
     const programJsonPath = pathJoin(clientDir, "program.json");
@@ -677,7 +659,8 @@ function runWebAppServer() {
     let programJson;
     try {
       programJson = JSON.parse(readFileSync(programJsonPath));
-    } catch (e) {
+    }
+    catch (e) {
       if (e.code === "ENOENT") return;
       throw e;
     }
@@ -687,7 +670,7 @@ function runWebAppServer() {
                       JSON.stringify(programJson.format));
     }
 
-    if (! programJsonPath || ! clientDir || ! programJson) {
+    if (!programJsonPath || !clientDir || !programJson) {
       throw new Error("Client config file not parsed.");
     }
 
@@ -847,11 +830,11 @@ function runWebAppServer() {
   WebAppInternals.reloadClientPrograms();
 
   // webserver
-  var app = connect();
+  const app = connect();
 
   // Packages and apps can add handlers that run before any other Meteor
   // handlers via WebApp.rawConnectHandlers.
-  var rawConnectHandlers = connect();
+  const rawConnectHandlers = connect();
   app.use(rawConnectHandlers);
 
   // Auto-compress any json, javascript, or text.
@@ -941,10 +924,10 @@ function runWebAppServer() {
 
   // Packages and apps can add handlers to this via WebApp.connectHandlers.
   // They are inserted before our default handler.
-  var packageAndAppHandlers = connect();
+  const packageAndAppHandlers = connect();
   app.use(packageAndAppHandlers);
 
-  var suppressConnectErrors = false;
+  let suppressConnectErrors = false;
   // connect knows it is an error handler because it has 4 arguments instead of
   // 3. go figure.  (It is not smart enough to find such a thing if it's hidden
   // inside packageAndAppHandlers.)
@@ -958,11 +941,12 @@ function runWebAppServer() {
   });
 
   app.use(async function (req, res, next) {
-    if (! appUrl(req.url)) {
+    if (!appUrl(req.url)) {
       return next();
 
-    } else {
-      var headers = {
+    }
+    else {
+      const headers = {
         'Content-Type': 'text/html; charset=utf-8'
       };
 
@@ -970,7 +954,7 @@ function runWebAppServer() {
         headers['Connection'] = 'Close';
       }
 
-      var request = WebApp.categorizeRequest(req);
+      const request = WebApp.categorizeRequest(req);
 
       if (request.url.query && request.url.query['meteor_css_resource']) {
         // In this case, we're requesting a CSS resource in the meteor-specific
@@ -1019,7 +1003,8 @@ function runWebAppServer() {
         res.writeHead(404, headers);
         if (Meteor.isDevelopment) {
           res.end(`No client program found for the ${arch} architecture.`);
-        } else {
+        }
+        else {
           // Safety net, but this branch should not be possible.
           res.end("404 Not Found");
         }
@@ -1065,8 +1050,8 @@ function runWebAppServer() {
   });
 
 
-  var httpServer = createServer(app);
-  var onListeningCallbacks = [];
+  const httpServer = createServer(app);
+  const onListeningCallbacks = [];
 
   // After 5 seconds w/o data on a socket, kill it.  On the other hand, if
   // there's an outstanding request, give it a higher timeout instead (to avoid
@@ -1171,7 +1156,7 @@ function runWebAppServer() {
   };
 }
 
-var inlineScriptsAllowed = true;
+let inlineScriptsAllowed = true;
 
 WebAppInternals.inlineScriptsAllowed = function () {
   return inlineScriptsAllowed;
@@ -1182,7 +1167,7 @@ WebAppInternals.setInlineScriptsAllowed = function (value) {
   WebAppInternals.generateBoilerplate();
 };
 
-var sriMode;
+let sriMode;
 
 WebAppInternals.enableSubresourceIntegrity = function(use_credentials = false) {
   sriMode = use_credentials ? 'use-credentials' : 'anonymous';
@@ -1195,7 +1180,7 @@ WebAppInternals.setBundledJsCssUrlRewriteHook = function (hookFn) {
 };
 
 WebAppInternals.setBundledJsCssPrefix = function (prefix) {
-  var self = this;
+  let self = this;
   self.setBundledJsCssUrlRewriteHook(
     function (url) {
       return prefix + url;
@@ -1206,7 +1191,7 @@ WebAppInternals.setBundledJsCssPrefix = function (prefix) {
 // JavaScript to be included in the app. This static JS will be inlined,
 // unless inline scripts have been disabled, in which case it will be
 // served under `/<sha1 of contents>`.
-var additionalStaticJs = {};
+const additionalStaticJs = {};
 WebAppInternals.addStaticJs = function (contents) {
   additionalStaticJs["/" + sha1(contents) + ".js"] = contents;
 };
