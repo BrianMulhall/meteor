@@ -4,19 +4,19 @@ Package.describe({
 });
 
 Npm.depends({"basic-auth-connect": "1.0.0",
-             "cookie-parser": "1.4.3",
-             connect: "3.6.5",
-             compression: "1.7.1",
-             errorhandler: "1.5.0",
-             parseurl: "1.3.2",
-             send: "0.16.1",
-             "stream-to-string": "1.1.0",
-             "qs": "6.4.0",
-             useragent: "2.3.0"});
+             "cookie-parser": "1.4.5",
+             "connect": "3.7.0",
+             "compression": "1.7.4",
+             "errorhandler": "1.5.1",
+             "parseurl": "1.3.3",
+             "send": "0.17.1",
+             "stream-to-string": "1.2.0",
+             "qs": "6.9.4",
+             "useragent": "2.3.0"});
 
 Npm.strip({
-  multiparty: ["test/"],
-  useragent: ["test/"]
+  "stream-to-string": ["test/"],
+  "useragent": ["test/"]
 });
 
 Cordova.depends({
@@ -55,10 +55,10 @@ Package.onUse(function (api) {
 
 Package.onTest(function (api) {
   api.use(['tinytest', 'ecmascript', 'webapp', 'http', 'underscore']);
-  api.addFiles('webapp_tests.js', 'server');
-  api.addFiles('webapp_client_tests.js', 'client');
-  api.addFiles('socket_file_tests.js', 'server');
+  api.addFiles('tests/webapp_tests.js', 'server');
+  api.addFiles('tests/webapp_client_tests.js', 'client');
+  api.addFiles('tests/socket_file_tests.js', 'server');
 
-  api.addAssets('modern_test_asset.js', 'web.browser');
-  api.addAssets('legacy_test_asset.js', 'legacy');
+  api.addAssets('tests/modern_test_asset.js', 'web.browser');
+  api.addAssets('tests/legacy_test_asset.js', 'web.browser.legacy');
 });

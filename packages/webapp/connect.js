@@ -26,7 +26,8 @@ export function connect(...connectArgs) {
         entry.handle = function handle(err, req, res, next) {
           return Promise.asyncApply(originalHandle, this, arguments);
         };
-      } else {
+      }
+      else {
         entry.handle = function handle(req, res, next) {
           return Promise.asyncApply(originalHandle, this, arguments);
         };

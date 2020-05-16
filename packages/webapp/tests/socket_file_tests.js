@@ -3,7 +3,7 @@ import { createServer } from 'net';
 import {
   removeExistingSocketFile,
   registerSocketFileCleanup,
-} from './socket_file.js';
+} from '../socket_file.js';
 import { EventEmitter } from 'events';
 import { tmpdir } from 'os';
 

@@ -12,8 +12,8 @@ const identity = value => value;
 function appendToStream(chunk, stream) {
   if (typeof chunk === "string") {
     stream.append(Buffer.from(chunk, "utf8"));
-  } else if (Buffer.isBuffer(chunk) ||
-             typeof chunk.read === "function") {
+  }
+  else if (Buffer.isBuffer(chunk) || typeof chunk.read === "function") {
     stream.append(chunk);
   }
 }
@@ -21,16 +21,16 @@ function appendToStream(chunk, stream) {
 let shouldWarnAboutToHTMLDeprecation = ! Meteor.isProduction;
 
 export class Boilerplate {
+
   constructor(arch, manifest, options = {}) {
+    
     const { headTemplate, closeTemplate } = getTemplate(arch);
+    
     this.headTemplate = headTemplate;
     this.closeTemplate = closeTemplate;
     this.baseData = null;
 
-    this._generateBoilerplateFromManifest(
-      manifest,
-      options
-    );
+    this._generateBoilerplateFromManifest( manifest, options);
   }
 
   toHTML(extraData) {
@@ -124,7 +124,8 @@ export class Boilerplate {
         itemObj.scriptContent = readUtf8FileSync(
           pathMapper(item.path));
         itemObj.inline = true;
-      } else if (item.sri) {
+      }
+      else if (item.sri) {
         itemObj.sri = item.sri;
       }
 
@@ -140,13 +141,11 @@ export class Boilerplate {
       }
 
       if (item.type === 'head') {
-        boilerplateBaseData.head =
-          readUtf8FileSync(pathMapper(item.path));
+        boilerplateBaseData.head = readUtf8FileSync(pathMapper(item.path));
       }
 
       if (item.type === 'body') {
-        boilerplateBaseData.body =
-          readUtf8FileSync(pathMapper(item.path));
+        boilerplateBaseData.body = readUtf8FileSync(pathMapper(item.path));
       }
     });
 

@@ -5,11 +5,11 @@ export const WebApp = {
     }
 
     return Array.prototype.find.call(document.styleSheets, sheet => {
-      if (sheet.cssText && ! sheet.cssRules) { // IE8
+      if (sheet.cssText && !sheet.cssRules) { // IE8
         return ! sheet.cssText.match(/meteor-css-not-found-error/);
       }
 
-      return ! Array.prototype.find.call(
+      return !Array.prototype.find.call(
         sheet.cssRules,
         rule => rule.selectorText === '.meteor-css-not-found-error'
       );

@@ -1,5 +1,4 @@
 const minimumVersions = Object.create(null);
-const hasOwn = Object.prototype.hasOwnProperty;
 
 // This map defines aliasing behavior in a generic way which still permits
 // minimum versions to be specified for a specific browser family.
@@ -46,10 +45,10 @@ function applyAliases(versions) {
     const aliases = browserAliases[original];
     original = original.toLowerCase();
 
-    if (hasOwn.call(lowerCaseVersions, original)) {
+    if (Object.prototype.hasOwnProperty.call(lowerCaseVersions, original)) {
       aliases.forEach(alias => {
         alias = alias.toLowerCase();
-        if (! hasOwn.call(lowerCaseVersions, alias)) {
+        if (!Object.prototype.hasOwnProperty.call(lowerCaseVersions, alias)) {
           lowerCaseVersions[alias] = lowerCaseVersions[original];
         }
       });
@@ -70,8 +69,7 @@ function isModern(browser) {
     typeof browser.name === "string" &&
     browser.name.toLowerCase();
 
-  return !!lowerCaseName &&
-    hasOwn.call(minimumVersions, lowerCaseName) &&
+  return !!lowerCaseName && Object.prototype.hasOwnProperty.call(minimumVersions, lowerCaseName) &&
     greaterThanOrEqualTo([
       ~~browser.major,
       ~~browser.minor,
@@ -90,7 +88,7 @@ function setMinimumBrowserVersions(versions, source) {
   Object.keys(lowerCaseVersions).forEach(lowerCaseName => {
     const version = lowerCaseVersions[lowerCaseName];
 
-    if (hasOwn.call(minimumVersions, lowerCaseName) &&
+    if (Object.prototype.hasOwnProperty.call(minimumVersions, lowerCaseName) &&
         ! greaterThan(version, minimumVersions[lowerCaseName].version)) {
       return;
     }
