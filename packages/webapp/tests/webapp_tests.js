@@ -336,6 +336,5 @@ Tinytest.add("webapp - npm modules", function (test) {
   // Make sure the version number looks like a version number.
   test.matches(WebAppInternals.NpmModules.connect.version, /^3\.(\d+)\.(\d+)/);
   test.equal(typeof(WebAppInternals.NpmModules.connect.module), 'function');
-  test.equal(typeof(WebAppInternals.NpmModules.connect.module.basicAuth),
-             'function');
+  test.equal(typeof(WebAppInternals.NpmModules.connect.module.basicAuth),'function');
 });

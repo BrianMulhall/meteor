@@ -29,22 +29,8 @@ export const WebAppInternals = {};
 // backwards compat to 2.0 of connect
 connect.basicAuth = basicAuth;
 
-WebAppInternals.NpmModules = {
-  connect: {
-    version: Npm.require('connect/package.json').version,
-    module: connect,
-  }
-};
-
-// Though we might prefer to use web.browser (modern) as the default
-// architecture, safety requires a more compatible defaultArch.
-WebApp.defaultArch = 'web.browser.legacy';
-
-// XXX maps archs to manifests
-WebApp.clientPrograms = {};
-
-// XXX maps archs to program path on filesystem
-const archPath = {};
+// maps archs to program path on filesystem
+const archPath = new Map();
 
 // HTML attribute hooks: functions to be called to determine any attributes to
 // be added to the '<html>' tag. Each function is passed a 'request' object (see
@@ -56,15 +42,16 @@ const htmlAttributeHooks = [];
 // Boilerplate object has:
 //   - func: XXX
 //   - baseData: XXX
-const boilerplateByArch = {};
+const boilerplateByArch = new Map();
 
 let inlineScriptsAllowed = true;
 
-const additionalStaticJs = {};
+const additionalStaticJs = Object.create(null);
 
 let sriMode;
 
-const boilerplateDataCallbacks = {};
+const boilerplateDataCallbacks = Object.create(null);
+
 
 function bundledJsCssUrlRewriteHook (url) {
   const bundledPrefix = __meteor_runtime_config__.ROOT_URL_PATH_PREFIX || '';
@@ -85,6 +72,50 @@ function shouldCompress(req, res) {
   // fallback to standard filter function
   return compress.filter(req, res);
 };
+
+function getStaticFileInfo(staticFilesByArch, originalPath, path, arch) {
+  if ( !WebApp.clientPrograms.has(arch) ) {
+    return null;
+  }
+
+  // Get a list of all available static file architectures, with arch
+  // first in the list if it exists.
+  const staticArchList = Object.keys(staticFilesByArch);
+  const archIndex = staticArchList.indexOf(arch);
+  if (archIndex > 0) {
+    staticArchList.unshift(staticArchList.splice(archIndex, 1)[0]);
+  }
+
+  let info = null;
+
+  staticArchList.some(arch => {
+    const staticFiles = staticFilesByArch[arch];
+
+    function finalize(path) {
+      info = staticFiles[path];
+      // Sometimes we register a lazy function instead of actual data in
+      // the staticFiles manifest.
+      if (typeof info === "function") {
+        info = staticFiles[path] = info();
+      }
+      return info;
+    }
+
+    // If staticFiles contains originalPath with the arch inferred above,
+    // use that information.
+    if (Object.prototype.hasOwnProperty.call(staticFiles, originalPath)) {
+      return finalize(originalPath);
+    }
+
+    // If categorizeRequest returned an alternate path, try that instead.
+    if (path !== originalPath &&
+      Object.prototype.hasOwnProperty.call(staticFiles, path)) {
+      return finalize(path);
+    }
+  });
+
+  return info;
+}
 
 // #BrowserIdentification
 //
@@ -141,8 +172,76 @@ function identifyBrowser(userAgentString) {
   };
 };
 
-// XXX Refactor as part of implementing real routing.
-WebAppInternals.identifyBrowser = identifyBrowser;
+// Serve app HTML for this URL?
+function appUrl(url) {
+  if (url === '/favicon.ico' || url === '/robots.txt')
+    return false;
+
+  // NOTE: app.manifest is not a web standard like favicon.ico and
+  // robots.txt. It is a file name we have chosen to use for HTML5
+  // appcache URLs. It is included here to prevent using an appcache
+  // then removing it from poisoning an app permanently. Eventually,
+  // once we have server side routing, this won't be needed as
+  // unknown URLs with return a 404 automatically.
+  if (url === '/app.manifest')
+    return false;
+
+  // Avoid serving app HTML for declared routes such as /sockjs/.
+  if (RoutePolicy.classify(url))
+    return false;
+
+  // we currently return app HTML on all URLs by default
+  return true;
+};
+
+function getHtmlAttributes(request) {
+  const combinedAttributes  = {};
+  _.each(htmlAttributeHooks || [], function (hook) {
+    const attributes = hook(request);
+    if (attributes === null)
+      return;
+    if (typeof attributes !== 'object')
+      throw Error("HTML attribute hook must return null or object");
+    _.extend(combinedAttributes, attributes);
+  });
+  return combinedAttributes;
+};
+
+
+function getBoilerplateAsync(request, arch) {
+  const boilerplate = boilerplateByArch.get(arch);
+  const data = Object.assign({}, boilerplate.baseData, {
+    htmlAttributes: getHtmlAttributes(request),
+  }, _.pick(request, "dynamicHead", "dynamicBody"));
+
+  let madeChanges = false;
+  let promise = Promise.resolve();
+
+  Object.keys(boilerplateDataCallbacks).forEach(key => {
+    promise = promise.then(() => {
+      const callback = boilerplateDataCallbacks[key];
+      return callback(request, data, arch);
+    }).then(result => {
+      // Callbacks should return false if they did not make any changes.
+      if (result !== false) {
+        madeChanges = true;
+      }
+    });
+  });
+
+  return promise.then(() => ({
+    stream: boilerplate.toHTMLStream(data),
+    statusCode: data.statusCode,
+    headers: data.headers,
+  }));
+}
+
+// Though we might prefer to use web.browser (modern) as the default
+// architecture, safety requires a more compatible defaultArch.
+WebApp.defaultArch = 'web.browser.legacy';
+
+// maps archs to manifests
+WebApp.clientPrograms = new Map();
 
 WebApp.categorizeRequest = function (req) {
   if (req.browser && req.arch && typeof req.modern === "boolean") {
@@ -171,7 +270,7 @@ WebApp.categorizeRequest = function (req) {
 
   if (archKey.startsWith("__")) {
     const archCleaned = "web." + archKey.slice(2);
-    if (Object.prototype.hasOwnProperty.call(WebApp.clientPrograms, archCleaned)) {
+    if ( WebApp.clientPrograms.has(archCleaned) ) {
       pathParts.splice(1, 1); // Remove the archKey part.
       return Object.assign(categorized, {
         arch: archCleaned,
@@ -194,7 +293,7 @@ WebApp.categorizeRequest = function (req) {
     // clients are better off receiving web.browser (which might actually
     // work) than receiving an HTTP 404 response. If none of the archs in
     // preferredArchOrder are defined, only then should we send a 404.
-    if (Object.prototype.hasOwnProperty.call(WebApp.clientPrograms, arch)) {
+    if (WebApp.clientPrograms.has(arch) ) {
       return Object.assign(categorized, { arch });
     }
   }
@@ -202,80 +301,9 @@ WebApp.categorizeRequest = function (req) {
   return categorized;
 };
 
-function getHtmlAttributes(request) {
-  const combinedAttributes  = {};
-  _.each(htmlAttributeHooks || [], function (hook) {
-    const attributes = hook(request);
-    if (attributes === null)
-      return;
-    if (typeof attributes !== 'object')
-      throw Error("HTML attribute hook must return null or object");
-    _.extend(combinedAttributes, attributes);
-  });
-  return combinedAttributes;
-};
-
 WebApp.addHtmlAttributeHook = function (hook) {
   htmlAttributeHooks.push(hook);
 };
-
-// Serve app HTML for this URL?
-function appUrl(url) {
-  if (url === '/favicon.ico' || url === '/robots.txt')
-    return false;
-
-  // NOTE: app.manifest is not a web standard like favicon.ico and
-  // robots.txt. It is a file name we have chosen to use for HTML5
-  // appcache URLs. It is included here to prevent using an appcache
-  // then removing it from poisoning an app permanently. Eventually,
-  // once we have server side routing, this won't be needed as
-  // unknown URLs with return a 404 automatically.
-  if (url === '/app.manifest')
-    return false;
-
-  // Avoid serving app HTML for declared routes such as /sockjs/.
-  if (RoutePolicy.classify(url))
-    return false;
-
-  // we currently return app HTML on all URLs by default
-  return true;
-};
-
-// We need to calculate the client hash after all packages have loaded
-// to give them a chance to populate __meteor_runtime_config__.
-//
-// Calculating the hash during startup means that packages can only
-// populate __meteor_runtime_config__ during load, not during startup.
-//
-// Calculating instead it at the beginning of main after all startup
-// hooks had run would allow packages to also populate
-// __meteor_runtime_config__ during startup, but that's too late for
-// autoupdate because it needs to have the client hash at startup to
-// insert the auto update version itself into
-// __meteor_runtime_config__ to get it to the client.
-//
-// An alternative would be to give autoupdate a "post-start,
-// pre-listen" hook to allow it to insert the auto update version at
-// the right moment.
-
-Meteor.startup(function () {
-  function getter(key) {
-    return function (arch) {
-      arch = arch || WebApp.defaultArch;
-      const program = WebApp.clientPrograms[arch];
-      const value = program && program[key];
-      // If this is the first time we have calculated this hash,
-      // program[key] will be a thunk (lazy function with no parameters)
-      // that we should call to do the actual computation.
-      return typeof value === "function" ? program[key] = value() : value;
-    };
-  }
-
-  WebApp.calculateClientHash = WebApp.clientHash = getter("version");
-  WebApp.calculateClientHashRefreshable = getter("versionRefreshable");
-  WebApp.calculateClientHashNonRefreshable = getter("versionNonRefreshable");
-  WebApp.getRefreshableAssets = getter("refreshableAssets");
-});
 
 // When we have a request pending, we want the socket timeout to be long, to
 // give ourselves a while to serve it, and to allow sockjs long polls to
@@ -299,6 +327,16 @@ WebApp._timeoutAdjustmentRequestCallback = function (req, res) {
   _.each(finishListeners, function (l) { res.on('finish', l); });
 };
 
+WebAppInternals.NpmModules = {
+  connect: {
+    version: Npm.require('connect/package.json').version,
+    module: connect,
+  }
+};
+
+// XXX Refactor as part of implementing real routing.
+WebAppInternals.identifyBrowser = identifyBrowser;
+
 // Register a callback function that can selectively modify boilerplate
 // data given arguments (request, data, arch). The key should be a unique
 // identifier, to prevent accumulating duplicate callbacks from the same
@@ -306,7 +344,6 @@ WebApp._timeoutAdjustmentRequestCallback = function (req, res) {
 // registered. A callback should return false if it did not make any
 // changes affecting the boilerplate. Passing null deletes the callback.
 // Any previous callback registered for this key will be returned.
-
 
 WebAppInternals.registerBoilerplateDataCallback = function (key, callback) {
   const previousCallback = boilerplateDataCallbacks[key];
@@ -336,33 +373,6 @@ WebAppInternals.getBoilerplate = function (request, arch) {
   return getBoilerplateAsync(request, arch).await();
 }
 
-function getBoilerplateAsync(request, arch) {
-  const boilerplate = boilerplateByArch[arch];
-  const data = Object.assign({}, boilerplate.baseData, {
-    htmlAttributes: getHtmlAttributes(request),
-  }, _.pick(request, "dynamicHead", "dynamicBody"));
-
-  let madeChanges = false;
-  let promise = Promise.resolve();
-
-  Object.keys(boilerplateDataCallbacks).forEach(key => {
-    promise = promise.then(() => {
-      const callback = boilerplateDataCallbacks[key];
-      return callback(request, data, arch);
-    }).then(result => {
-      // Callbacks should return false if they did not make any changes.
-      if (result !== false) {
-        madeChanges = true;
-      }
-    });
-  });
-
-  return promise.then(() => ({
-    stream: boilerplate.toHTMLStream(data),
-    statusCode: data.statusCode,
-    headers: data.headers,
-  }));
-}
 
 WebAppInternals.generateBoilerplateInstance = function (arch, manifest, additionalOptions = {}) {
 
@@ -375,7 +385,7 @@ WebAppInternals.generateBoilerplateInstance = function (arch, manifest, addition
 
   return new Boilerplate(arch, manifest, _.extend({
     pathMapper(itemPath) {
-      return pathJoin(archPath[arch], itemPath);
+      return pathJoin(archPath.get(arch), itemPath);
     },
     baseDataExtension: {
       additionalStaticJs: _.map(
@@ -444,7 +454,7 @@ WebAppInternals.staticFilesMiddleware = async function ( staticFilesByArch, req,
 
   const { arch, path } = WebApp.categorizeRequest(req);
 
-  if (!Object.prototype.hasOwnProperty.call(WebApp.clientPrograms, arch)) {
+  if ( !WebApp.clientPrograms.has(arch) ) {
     // We could come here in case we run with some architectures excluded
     next();
     return;
@@ -452,7 +462,7 @@ WebAppInternals.staticFilesMiddleware = async function ( staticFilesByArch, req,
 
   // If pauseClient(arch) has been called, program.paused will be a
   // Promise that will be resolved when the program is unpaused.
-  const program = WebApp.clientPrograms[arch];
+  const program = WebApp.clientPrograms.get(arch);
   await program.paused;
 
   if (path === "/meteor_runtime_config.js" && !WebAppInternals.inlineScriptsAllowed()) {
@@ -528,50 +538,6 @@ WebAppInternals.staticFilesMiddleware = async function ( staticFilesByArch, req,
   }
 };
 
-function getStaticFileInfo(staticFilesByArch, originalPath, path, arch) {
-  if (!Object.prototype.hasOwnProperty.call(WebApp.clientPrograms, arch)) {
-    return null;
-  }
-
-  // Get a list of all available static file architectures, with arch
-  // first in the list if it exists.
-  const staticArchList = Object.keys(staticFilesByArch);
-  const archIndex = staticArchList.indexOf(arch);
-  if (archIndex > 0) {
-    staticArchList.unshift(staticArchList.splice(archIndex, 1)[0]);
-  }
-
-  let info = null;
-
-  staticArchList.some(arch => {
-    const staticFiles = staticFilesByArch[arch];
-
-    function finalize(path) {
-      info = staticFiles[path];
-      // Sometimes we register a lazy function instead of actual data in
-      // the staticFiles manifest.
-      if (typeof info === "function") {
-        info = staticFiles[path] = info();
-      }
-      return info;
-    }
-
-    // If staticFiles contains originalPath with the arch inferred above,
-    // use that information.
-    if (Object.prototype.hasOwnProperty.call(staticFiles, originalPath)) {
-      return finalize(originalPath);
-    }
-
-    // If categorizeRequest returned an alternate path, try that instead.
-    if (path !== originalPath &&
-      Object.prototype.hasOwnProperty.call(staticFiles, path)) {
-      return finalize(path);
-    }
-  });
-
-  return info;
-}
-
 // Parse the passed in port value. Return the port as-is if it's a String
 // (e.g. a Windows Server style named pipe), otherwise return the port as an
 // integer.
@@ -586,6 +552,47 @@ WebAppInternals.parsePort = port => {
   return parsedPort;
 }
 
+
+WebAppInternals.inlineScriptsAllowed = function () {
+  return inlineScriptsAllowed;
+};
+
+WebAppInternals.setInlineScriptsAllowed = function (value) {
+  inlineScriptsAllowed = value;
+  WebAppInternals.generateBoilerplate();
+};
+
+WebAppInternals.enableSubresourceIntegrity = function(use_credentials = false) {
+  sriMode = use_credentials ? 'use-credentials' : 'anonymous';
+  WebAppInternals.generateBoilerplate();
+};
+
+WebAppInternals.setBundledJsCssUrlRewriteHook = function (hookFn) {
+  bundledJsCssUrlRewriteHook = hookFn;
+  WebAppInternals.generateBoilerplate();
+};
+
+WebAppInternals.setBundledJsCssPrefix = function (prefix) {
+  let self = this;
+  self.setBundledJsCssUrlRewriteHook(
+    function (url) {
+      return prefix + url;
+  });
+};
+
+// Packages can call `WebAppInternals.addStaticJs` to specify static
+// JavaScript to be included in the app. This static JS will be inlined,
+// unless inline scripts have been disabled, in which case it will be
+// served under `/<sha1 of contents>`.
+WebAppInternals.addStaticJs = function (contents) {
+  additionalStaticJs["/" + sha1(contents) + ".js"] = contents;
+};
+
+// Exported for tests
+WebAppInternals.additionalStaticJs = additionalStaticJs;
+
+
+// Interprocess Messaging
 onMessage("webapp-pause-client", async ({ arch }) => {
   WebAppInternals.pauseClient(arch);
 });
@@ -594,6 +601,43 @@ onMessage("webapp-reload-client", async ({ arch }) => {
   WebAppInternals.generateClientProgram(arch);
 });
 
+// We need to calculate the client hash after all packages have loaded
+// to give them a chance to populate __meteor_runtime_config__.
+//
+// Calculating the hash during startup means that packages can only
+// populate __meteor_runtime_config__ during load, not during startup.
+//
+// Calculating instead it at the beginning of main after all startup
+// hooks had run would allow packages to also populate
+// __meteor_runtime_config__ during startup, but that's too late for
+// autoupdate because it needs to have the client hash at startup to
+// insert the auto update version itself into
+// __meteor_runtime_config__ to get it to the client.
+//
+// An alternative would be to give autoupdate a "post-start,
+// pre-listen" hook to allow it to insert the auto update version at
+// the right moment.
+
+Meteor.startup(function () {
+  function getter(key) {
+    return function (arch) {
+      arch = arch || WebApp.defaultArch;
+      const program = WebApp.clientPrograms.get(arch);
+      const value = program && program[key];
+      // If this is the first time we have calculated this hash,
+      // program[key] will be a thunk (lazy function with no parameters)
+      // that we should call to do the actual computation.
+      return typeof value === "function" ? program[key] = value() : value;
+    };
+  }
+
+  WebApp.calculateClientHash = WebApp.clientHash = getter("version");
+  WebApp.calculateClientHashRefreshable = getter("versionRefreshable");
+  WebApp.calculateClientHashNonRefreshable = getter("versionNonRefreshable");
+  WebApp.getRefreshableAssets = getter("refreshableAssets");
+});
+
+// Http Server Start up
 function runWebAppServer() {
   let shuttingDown = false;
   const syncQueue = new Meteor._SynchronousQueue();
@@ -624,7 +668,7 @@ function runWebAppServer() {
   // unpaused the next time generateClientProgram(arch) is called.
   WebAppInternals.pauseClient = function (arch) {
     syncQueue.runTask(() => {
-      const program = WebApp.clientPrograms[arch];
+      const program = WebApp.clientPrograms.get(arch);
       const { unpause } = program;
       program.paused = new Promise(resolve => {
         if (typeof unpause === "function") {
@@ -669,7 +713,7 @@ function runWebAppServer() {
       throw new Error("Client config file not parsed.");
     }
 
-    archPath[arch] = clientDir;
+    archPath.set(arch, clientDir);
     const staticFiles = staticFilesByArch[arch] = Object.create(null);
 
     const { manifest } = programJson;
@@ -700,23 +744,23 @@ function runWebAppServer() {
       PUBLIC_SETTINGS,
     };
 
-    const oldProgram = WebApp.clientPrograms[arch];
-    const newProgram = WebApp.clientPrograms[arch] = {
-      format: "web-program-pre1",
-      manifest: manifest,
-      // Use arrow functions so that these versions can be lazily
-      // calculated later, and so that they will not be included in the
-      // staticFiles[manifestUrl].content string below.
-      //
-      // Note: these version calculations must be kept in agreement with
-      // CordovaBuilder#appendVersion in tools/cordova/builder.js, or hot
-      // code push will reload Cordova apps unnecessarily.
-      version: () => WebAppHashing.calculateClientHash( manifest, null, configOverrides),
-      versionRefreshable: () => WebAppHashing.calculateClientHash( manifest, type => type === "css", configOverrides),
-      versionNonRefreshable: () => WebAppHashing.calculateClientHash( manifest, type => type !== "css", configOverrides),
-      cordovaCompatibilityVersions: programJson.cordovaCompatibilityVersions,
-      PUBLIC_SETTINGS,
-    };
+    const oldProgram = WebApp.clientPrograms.get(arch);
+
+    const newProgram = WebApp.clientPrograms.set(arch , { format: "web-program-pre1",
+                                                          manifest: manifest,
+                                                          // Use arrow functions so that these versions can be lazily
+                                                          // calculated later, and so that they will not be included in the
+                                                          // staticFiles[manifestUrl].content string below.
+                                                          //
+                                                          // Note: these version calculations must be kept in agreement with
+                                                          // CordovaBuilder#appendVersion in tools/cordova/builder.js, or hot
+                                                          // code push will reload Cordova apps unnecessarily.
+                                                          version: () => WebAppHashing.calculateClientHash( manifest, null, configOverrides),
+                                                          versionRefreshable: () => WebAppHashing.calculateClientHash( manifest, type => type === "css", configOverrides),
+                                                          versionNonRefreshable: () => WebAppHashing.calculateClientHash( manifest, type => type !== "css", configOverrides),
+                                                          cordovaCompatibilityVersions: programJson.cordovaCompatibilityVersions,
+                                                          PUBLIC_SETTINGS,
+                                                        });
 
     // Expose program details as a string reachable via the following URL.
     const manifestUrlPrefix = "/__" + arch.replace(/^web\./, "");
@@ -791,20 +835,23 @@ function runWebAppServer() {
     // Meteor/Cordova for the Hot-Code Push and since the file will be served by
     // the device's server, it is important to set the DDP url to the actual
     // Meteor server accepting DDP connections and not the device's file server.
-    syncQueue.runTask(function() {
-      Object.keys(WebApp.clientPrograms).forEach(generateBoilerplateForArch);
+    syncQueue.runTask(function () {
+      let it = WebApp.clientPrograms.keys();
+
+      for (const arch of it) { 
+        generateBoilerplateForArch(arch);
+      }
     });
   };
 
   function generateBoilerplateForArch(arch) {
-    const program = WebApp.clientPrograms[arch];
+    const program = WebApp.clientPrograms.get(arch);
     const additionalOptions = defaultOptionsForArch[arch] || {};
-    const { baseData } = boilerplateByArch[arch] =
-      WebAppInternals.generateBoilerplateInstance(
-        arch,
-        program.manifest,
-        additionalOptions,
-      );
+
+    boilerplateByArch.set(arch, WebAppInternals.generateBoilerplateInstance(arch, program.manifest, additionalOptions));
+    
+    const { baseData } = boilerplateByArch.get(arch);
+
     // We need the runtime config with overrides for meteor_runtime_config.js:
     program.meteorRuntimeConfig = JSON.stringify({
       ...__meteor_runtime_config__,
@@ -980,7 +1027,7 @@ function runWebAppServer() {
       const { arch } = request;
       assert.strictEqual(typeof arch, "string", { arch });
 
-      if (!Object.prototype.hasOwnProperty.call(WebApp.clientPrograms, arch)) {
+      if ( !WebApp.clientPrograms.has(arch) ) {
         // We could come here in case we run with some architectures excluded
         headers['Cache-Control'] = 'no-cache';
         res.writeHead(404, headers);
@@ -996,7 +1043,7 @@ function runWebAppServer() {
 
       // If pauseClient(arch) has been called, program.paused will be a
       // Promise that will be resolved when the program is unpaused.
-      await WebApp.clientPrograms[arch].paused;
+      await WebApp.clientPrograms.get(arch).paused;
 
       return getBoilerplateAsync(request, arch).then(({
         stream,
@@ -1139,44 +1186,6 @@ function runWebAppServer() {
     return "DAEMON";
   };
 }
-
-WebAppInternals.inlineScriptsAllowed = function () {
-  return inlineScriptsAllowed;
-};
-
-WebAppInternals.setInlineScriptsAllowed = function (value) {
-  inlineScriptsAllowed = value;
-  WebAppInternals.generateBoilerplate();
-};
-
-WebAppInternals.enableSubresourceIntegrity = function(use_credentials = false) {
-  sriMode = use_credentials ? 'use-credentials' : 'anonymous';
-  WebAppInternals.generateBoilerplate();
-};
-
-WebAppInternals.setBundledJsCssUrlRewriteHook = function (hookFn) {
-  bundledJsCssUrlRewriteHook = hookFn;
-  WebAppInternals.generateBoilerplate();
-};
-
-WebAppInternals.setBundledJsCssPrefix = function (prefix) {
-  let self = this;
-  self.setBundledJsCssUrlRewriteHook(
-    function (url) {
-      return prefix + url;
-  });
-};
-
-// Packages can call `WebAppInternals.addStaticJs` to specify static
-// JavaScript to be included in the app. This static JS will be inlined,
-// unless inline scripts have been disabled, in which case it will be
-// served under `/<sha1 of contents>`.
-WebAppInternals.addStaticJs = function (contents) {
-  additionalStaticJs["/" + sha1(contents) + ".js"] = contents;
-};
-
-// Exported for tests
-WebAppInternals.additionalStaticJs = additionalStaticJs;
 
 // Start the server!
 runWebAppServer();
