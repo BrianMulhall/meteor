@@ -1,6 +1,6 @@
 import npmConnect from "connect";
 
-export function connect(...connectArgs) {
+function connect(...connectArgs) {
   const handlers = npmConnect.apply(this, connectArgs);
   const originalUse = handlers.use;
 
@@ -39,3 +39,5 @@ export function connect(...connectArgs) {
 
   return handlers;
 }
+
+export { connect };

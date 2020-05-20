@@ -1,4 +1,4 @@
-export const WebApp = {
+const WebApp = {
   _isCssLoaded() {
     if (document.styleSheets.length === 0) {
       return true;
@@ -16,3 +16,5 @@ export const WebApp = {
     });
   }
 };
+
+export { WebApp };

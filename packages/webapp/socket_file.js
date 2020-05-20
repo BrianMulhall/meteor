@@ -23,7 +23,7 @@ import { statSync, unlinkSync, existsSync } from 'fs';
 // care is taken to make sure the configured path is unique and doesn't
 // conflict with another socket file path), then there should not be
 // any issues with this approach.
-export const removeExistingSocketFile = (socketPath) => {
+const removeExistingSocketFile = (socketPath) => {
   try {
     if (statSync(socketPath).isSocket()) {
       // Since a new socket file will be created, remove the existing
@@ -49,7 +49,7 @@ export const removeExistingSocketFile = (socketPath) => {
 // Remove the socket file when done to avoid leaving behind a stale one.
 // Note - a stale socket file is still left behind if the running node
 // process is killed via signal 9 - SIGKILL.
-export const registerSocketFileCleanup =
+const registerSocketFileCleanup =
   (socketPath, eventEmitter = process) => {
     ['exit', 'SIGINT', 'SIGHUP', 'SIGTERM'].forEach(signal => {
       eventEmitter.on(signal, Meteor.bindEnvironment(() => {
@@ -59,3 +59,5 @@ export const registerSocketFileCleanup =
       }));
     });
   };
+
+export { removeExistingSocketFile,registerSocketFileCleanup};
