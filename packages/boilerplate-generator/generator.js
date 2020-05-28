@@ -5,9 +5,13 @@ import WebBrowserTemplate from './template-web.browser';
 import WebCordovaTemplate from './template-web.cordova';
 
 // Copied from webapp_server
-const readUtf8FileSync = filename => Meteor.wrapAsync(readFile)(filename, 'utf8');
+function readUtf8FileSync(filename) {
+  return Meteor.wrapAsync(readFile)(filename, 'utf8');
+}
 
-const identity = value => value;
+function identity(value) {
+  return value;
+}
 
 function appendToStream(chunk, stream) {
   if (typeof chunk === "string") {
@@ -18,7 +22,7 @@ function appendToStream(chunk, stream) {
   }
 }
 
-let shouldWarnAboutToHTMLDeprecation = ! Meteor.isProduction;
+let shouldWarnAboutToHTMLDeprecation = !Meteor.isProduction;
 
 export class Boilerplate {
 
@@ -36,10 +40,7 @@ export class Boilerplate {
   toHTML(extraData) {
     if (shouldWarnAboutToHTMLDeprecation) {
       shouldWarnAboutToHTMLDeprecation = false;
-      console.error(
-        "The Boilerplate#toHTML method has been deprecated. " +
-          "Please use Boilerplate#toHTMLStream instead."
-      );
+      console.error("The Boilerplate#toHTML method has been deprecated. Please use Boilerplate#toHTMLStream instead.");
       console.trace();
     }
 
@@ -100,12 +101,7 @@ export class Boilerplate {
   // or rewritten.
   // Optionally takes pathMapper for resolving relative file system paths.
   // Optionally allows to override fields of the data context.
-  _generateBoilerplateFromManifest(manifest, {
-    urlMapper = identity,
-    pathMapper = identity,
-    baseDataExtension,
-    inline,
-  } = {}) {
+  _generateBoilerplateFromManifest(manifest, { urlMapper = identity,pathMapper = identity,baseDataExtension,inline } = {}) {
 
     const boilerplateBaseData = {
       css: [],
@@ -156,6 +152,9 @@ export class Boilerplate {
 // Returns a template function that, when called, produces the boilerplate
 // html as a string.
 function getTemplate(arch) {
+  // this will keep only the first two items of the string
+  // e.g arch.split(".",2) ,might yeild ["web","browser"]
+  // for both web.browser and web.browser.legacy
   const prefix = arch.split(".", 2).join(".");
 
   if (prefix === "web.browser") {

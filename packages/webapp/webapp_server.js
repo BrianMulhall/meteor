@@ -27,13 +27,14 @@ connect.basicAuth = basicAuth;
 
 const syncQueue = new Meteor._SynchronousQueue();
 
-// maps archs to program path on filesystem
-const archPath = new Map();
-
 // HTML attribute hooks: functions to be called to determine any attributes to
 // be added to the '<html>' tag. Each function is passed a 'request' object (see
 // #BrowserIdentification) and should return null or object.
 const htmlAttributeHooks = [];
+
+let sriMode;
+
+let inlineScriptsAllowed = true;
 
 // Will be updated by main before we listen.
 // Map from client arch to boilerplate object.
@@ -42,11 +43,10 @@ const htmlAttributeHooks = [];
 //   - baseData: XXX
 const boilerplateByArch = new Map();
 
-let inlineScriptsAllowed = true;
+// maps archs to program path on filesystem
+const archPath = new Map();
 
 const additionalStaticJs = Object.create(null);
-
-let sriMode;
 
 const boilerplateDataCallbacks = Object.create(null);
 
@@ -861,7 +861,6 @@ Meteor.startup(function () {
 
 // Http Server Start up
 function runWebAppServer() {
-  const shuttingDown = false;
 
   WebAppInternals.reloadClientPrograms();
 
@@ -897,10 +896,10 @@ function runWebAppServer() {
   // Do this before the next middleware destroys req.url if a path prefix
   // is set to close #10111.
   app.use(function (req, res, next) {
-    req.query = qs.parse(parseUrl(req.url).query);
+    const parsedUrl = parseUrl(req.url);
+    req.query = qs.parse(parsedUrl.query);
     next();
   });
-
 
   // Strip off the path prefix, if it exists.
   app.use(function (req, res, next) {
@@ -971,10 +970,6 @@ function runWebAppServer() {
       const headers = {
         'Content-Type': 'text/html; charset=utf-8'
       };
-
-      if (shuttingDown) {
-        headers['Connection'] = 'Close';
-      }
 
       const request = WebApp.categorizeRequest(req);
 
@@ -1186,4 +1181,4 @@ function runWebAppServer() {
 // Start the server!
 runWebAppServer();
 
-export { WebApp, WebAppInternals, main };
+export { WebApp, WebAppInternals };

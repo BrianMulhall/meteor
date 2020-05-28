@@ -1,22 +1,13 @@
 import template from './template';
 
 // Template function for rendering the boilerplate html for cordova
-export const headTemplate = ({
-  meteorRuntimeConfig,
-  rootUrlPathPrefix,
-  inlineScriptsAllowed,
-  css,
-  js,
-  additionalStaticJs,
-  htmlAttributes,
-  bundledJsCssUrlRewriteHook,
-  head,
-  dynamicHead,
-}) => {
-  var headSections = head.split(/<meteor-bundled-css[^<>]*>/, 2);
-  var cssBundle = [
+function headTemplate({ meteorRuntimeConfig, rootUrlPathPrefix, inlineScriptsAllowed, css = [], js = [], additionalStaticJs = [], htmlAttributes, bundledJsCssUrlRewriteHook, head, dynamicHead }) {
+  
+  const headSections = head.split(/<meteor-bundled-css[^<>]*>/, 2);
+  
+  const cssBundle = [
     // We are explicitly not using bundledJsCssUrlRewriteHook: in cordova we serve assets up directly from disk, so rewriting the URL does not make sense
-    ...(css || []).map(file =>
+    ...(css).map(file =>
       template('  <link rel="stylesheet" type="text/css" class="__meteor-css__" href="<%- href %>">')({
         href: file.url,
       })
@@ -31,9 +22,7 @@ export const headTemplate = ({
     '  <meta name="msapplication-tap-highlight" content="no">',
     '  <meta http-equiv="Content-Security-Policy" content="default-src * gap: data: blob: \'unsafe-inline\' \'unsafe-eval\' ws: wss:;">',
 
-  (headSections.length === 1)
-    ? [cssBundle, headSections[0]].join('\n')
-    : [headSections[0], cssBundle, headSections[1]].join('\n'),
+  (headSections.length === 1) ? [cssBundle, headSections[0]].join('\n') : [headSections[0], cssBundle, headSections[1]].join('\n'),
 
     '  <script type="text/javascript">',
     template('    __meteor_runtime_config__ = JSON.parse(decodeURIComponent(<%= conf %>));')({
@@ -52,21 +41,15 @@ export const headTemplate = ({
     '',
     '  <script type="text/javascript" src="/cordova.js"></script>',
 
-    ...(js || []).map(file =>
+    ...(js).map(file =>
       template('  <script type="text/javascript" src="<%- src %>"></script>')({
         src: file.url,
       })
     ),
 
-    ...(additionalStaticJs || []).map(({ contents, pathname }) => (
-      inlineScriptsAllowed
-        ? template('  <script><%= contents %></script>')({
-          contents,
-        })
-        : template('  <script type="text/javascript" src="<%- src %>"></script>')({
-          src: rootUrlPathPrefix + pathname
-        })
-    )),
+    ...(additionalStaticJs).map(({ contents, pathname }) => (
+      
+    inlineScriptsAllowed ? template('  <script><%= contents %></script>')({ contents }) : template('  <script type="text/javascript" src="<%- src %>"></script>')({ src: rootUrlPathPrefix + pathname }))),
     '',
     '</head>',
     '',
@@ -74,6 +57,8 @@ export const headTemplate = ({
   ].join('\n');
 };
 
-export function closeTemplate() {
+function closeTemplate() {
   return "</body>\n</html>";
 }
+
+export { headTemplate, closeTemplate } 
