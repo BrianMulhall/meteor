@@ -25,8 +25,7 @@ const isLocalConnection = (req) => {
 // received it as SSL, or a proxy did and translated it for us.
 const isSslConnection = (req) => {
   const forwardedParams = forwarded(req);
-  return req.connection.pair
-      || forwardedParams.proto && forwardedParams.proto.indexOf('https') !== -1;
+  return req.connection.pair || forwardedParams.proto && forwardedParams.proto.indexOf('https') !== -1;
 };
 
 export { isLocalConnection, isSslConnection };

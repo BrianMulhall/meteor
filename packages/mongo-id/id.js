@@ -81,19 +81,24 @@ MongoID.idStringify = (id) => {
   }
 };
 
-MongoID.idParse = (id) => {
+MongoID.idParse = function(id){
   var firstChar = id.charAt(0);
   if (id === '') {
     return id;
-  } else if (id === '-') {
+  }
+  else if (id === '-') {
     return undefined;
-  } else if (firstChar === '-') {
+  }
+  else if (firstChar === '-') {
     return id.substr(1);
-  } else if (firstChar === '~') {
+  }
+  else if (firstChar === '~') {
     return JSON.parse(id.substr(1));
-  } else if (MongoID._looksLikeObjectID(id)) {
+  }
+  else if (MongoID._looksLikeObjectID(id)) {
     return new MongoID.ObjectID(id);
-  } else {
+  }
+  else {
     return id;
   }
 };

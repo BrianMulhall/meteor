@@ -24,7 +24,5 @@ export const LocalCollectionDriver = new (class LocalCollectionDriver {
 });
 
 function ensureCollection(name, collections) {
-  return (name in collections)
-    ? collections[name]
-    : collections[name] = new LocalCollection(name);
+  return (name in collections) ? collections[name] : collections[name] = new LocalCollection(name);
 }
